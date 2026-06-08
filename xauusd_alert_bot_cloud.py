@@ -7,8 +7,9 @@ from datetime import datetime
 # ══════════════════════════════════════
 TELEGRAM_TOKEN    = "7456674909:AAHOzkE4saghYV1qdwSx-GoKFnA-psM74nE"
 TELEGRAM_CHAT_ID  = "@Profit_XAUUSD_WinRate85"
+POLYGON_KEY       = "t36EhphV3LND4v2z8ispE2B2fa3lEe1t"
 TWELVEDATA_KEY    = "a6b7b79510d24bb194dbf6f35efaa4d6"
-CHECK_INTERVAL    = 120   # каждые 2 минуты = 720 запросов/день (лимит 800)
+CHECK_INTERVAL    = 60    # каждую минуту
 ALERT_COOLDOWN    = 900   # повтор алерта раз в 15 минут
 
 # ══════════════════════════════════════
@@ -34,7 +35,7 @@ LEVELS = [
     {"price": 4006.85, "name": "4H поддержка",           "emoji": "🔵"},
 ]
 
-TOLERANCE = 0.80  # ±0.80 пунктов
+TOLERANCE = 1.50  # ±1.50 пунктов
 
 # ══════════════════════════════════════
 # Состояние алертов
@@ -43,32 +44,57 @@ last_alerted = {lvl["price"]: 0 for lvl in LEVELS}
 
 
 def get_gold_price():
-    """Получаем цену через Twelve Data — реальное время"""
+    """Получаем цену — Polygon.io первый, остальные резервные"""
+
+    # Источник 1: Polygon.io — реальная цена без задержки
+    try:
+        url = f"https://api.polygon.io/v2/last/trade/C:XAUUSD?apiKey={POLYGON_KEY}"
+        r = requests.get(url, timeout=8)
+        data = r.json()
+        if data.get("status") == "OK" and "results" in data:
+            price = float(data["results"]["p"])
+            if price > 3000:
+                print(f"  [polygon] {price:.2f}")
+                return price
+        # Polygon forex endpoint
+        url2 = f"https://api.polygon.io/v1/last_quote/currencies/XAU/USD?apiKey={POLYGON_KEY}"
+        r2 = requests.get(url2, timeout=8)
+        data2 = r2.json()
+        if "last" in data2:
+            price = float(data2["last"]["ask"] + data2["last"]["bid"]) / 2
+            if price > 3000:
+                print(f"  [polygon forex] {price:.2f}")
+                return price
+    except Exception as e:
+        print(f"  polygon fail: {e}")
+
+    # Источник 2: Twelve Data — резерв
     try:
         url = f"https://api.twelvedata.com/price?symbol=XAU/USD&apikey={TWELVEDATA_KEY}"
-        r = requests.get(url, timeout=10)
+        r = requests.get(url, timeout=8)
         data = r.json()
         if "price" in data:
             price = float(data["price"])
             if price > 3000:
+                print(f"  [twelvedata резерв] {price:.2f}")
                 return price
-        print(f"  Twelve Data ответ: {data}")
     except Exception as e:
-        print(f"  Twelve Data fail: {e}")
+        print(f"  twelvedata fail: {e}")
 
-    # Резервный источник — Yahoo Finance
+    # Источник 3: Yahoo Finance — последний резерв
     try:
         url = "https://query1.finance.yahoo.com/v8/finance/chart/XAUUSD=X"
         headers = {"User-Agent": "Mozilla/5.0"}
-        r = requests.get(url, headers=headers, timeout=10)
+        r = requests.get(url, headers=headers, timeout=8)
         data = r.json()
         price = float(data["chart"]["result"][0]["meta"]["regularMarketPrice"])
         if price > 3000:
-            print(f"  [резерв: yahoo] {price:.2f}")
+            print(f"  [yahoo резерв] {price:.2f}")
             return price
     except Exception as e:
-        print(f"  Yahoo fail: {e}")
+        print(f"  yahoo fail: {e}")
 
+    print("  ❌ Все источники недоступны")
     return None
 
 
@@ -90,12 +116,12 @@ def send_telegram(message):
 def send_test_message(price):
     price_str = f"{price:.2f}" if price else "недоступна"
     msg = (
-        "✅ <b>БОТ ЗАПУЩЕН НА ОБЛАКЕ!</b>\n\n"
+        "✅ <b>БОТ ПЕРЕЗАПУЩЕН!</b>\n\n"
         "☁️ Сервер: Railway (24/7)\n"
-        "📡 Источник цены: Twelve Data\n"
+        "📡 Источник цены: Polygon.io (без задержки)\n"
         "📊 Инструмент: XAU/USD\n"
         f"💰 Текущая цена: <b>{price_str}</b>\n"
-        f"⏱ Проверка каждые 2 минуты\n"
+        f"⏱ Проверка каждую минуту\n"
         f"🔕 Повтор алерта: раз в 15 мин\n"
         f"📐 Допуск касания: ±{TOLERANCE} пунктов\n\n"
         "<b>Слежу за уровнями:</b>\n"
@@ -135,11 +161,11 @@ def check_levels(price):
 
 def main():
     print("=" * 40)
-    print("   XAU/USD ALERT BOT (ОБЛАКО)")
+    print("   XAU/USD ALERT BOT (POLYGON)")
     print("=" * 40)
     print(f"📢 Канал: {TELEGRAM_CHAT_ID}")
     print(f"📋 Уровней: {len(LEVELS)}")
-    print(f"⏱  Проверка: каждые 2 минуты")
+    print(f"⏱  Проверка: каждую минуту")
     print(f"🔕 Повтор: раз в 15 мин")
     print(f"📐 Допуск: ±{TOLERANCE} пунктов")
     print("─" * 40)
