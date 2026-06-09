@@ -23,12 +23,12 @@ LEVELS = [
     {"price": 4407.77, "name": "4H поддержка",           "emoji": "🔵"},
     {"price": 4388.03, "name": "4H поддержка",           "emoji": "🔵"},
     {"price": 4368.30, "name": "4H поддержка",           "emoji": "🔵"},
-    {"price": 4353.40, "name": "МАКС Д / боковик 15,  "emoji": "🟡"},
+    {"price": 4353.40, "name": "МАКС Д / боковик 15",  "emoji": "🟡"},
     {"price": 4328.82, "name": "4H поддержка",           "emoji": "🔵"},
     {"price": 4304.60, "name": "ATR",                    "emoji": "🔵"},
     {"price": 4288.45, "name": "4H поддержка",           "emoji": "🔵"},
-    {"price": 4268.55, "name": "МИН Д / боковик 15,  "emoji": "🟡"},
-    {"price": 44245.39, "name": "4H поддержка",           "emoji": "🔵"},
+    {"price": 4268.55, "name": "МИН Д / боковик 15",  "emoji": "🟡"},
+    {"price": 4245.39, "name": "4H поддержка",           "emoji": "🔵"},
     {"price": 4215.78, "name": "1H поддержка",           "emoji": "🟣"},
     {"price": 4188.87, "name": "1H поддержка",           "emoji": "🟣"},
 ]
@@ -114,7 +114,7 @@ def send_telegram(message):
 def send_test_message(price):
     price_str = f"{price:.2f}" if price else "недоступна"
     msg = (
-        "✅ <b>БОТ ПЕРЕЗАПУЩЕН!</b>\n\n"
+        "✅ <b>БОТ ПЕРЕЗАПУЩЕН НА ОБЛАКЕ!</b>\n\n"
         "☁️ Сервер: Railway (24/7)\n"
         "📡 Источник цены: Polygon.io (без задержки)\n"
         "📊 Инструмент: XAU/USD\n"
