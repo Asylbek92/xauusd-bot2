@@ -1,6 +1,8 @@
 import requests
 import time
+import threading
 from datetime import datetime
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # ══════════════════════════════════════
 # Настройки
@@ -9,45 +11,57 @@ TELEGRAM_TOKEN    = "7456674909:AAHOzkE4saghYV1qdwSx-GoKFnA-psM74nE"
 TELEGRAM_CHAT_ID  = "@Profit_XAUUSD_WinRate85"
 POLYGON_KEY       = "t36EhphV3LND4v2z8ispE2B2fa3lEe1t"
 TWELVEDATA_KEY    = "a6b7b79510d24bb194dbf6f35efaa4d6"
-CHECK_INTERVAL    = 60    # каждую минуту
-ALERT_COOLDOWN    = 900   # повтор алерта раз в 15 минут
+CHECK_INTERVAL    = 60
+ALERT_COOLDOWN    = 900
 
 # ══════════════════════════════════════
 # Уровни
 # ══════════════════════════════════════
 LEVELS = [
-    {"price": 4541.50, "name": "4H поддержка",           "emoji": "🟣"},
-    {"price": 4498.55, "name": "4H поддержка",           "emoji": "🟣"},
-    {"price": 4458.94, "name": "4H поддержка",           "emoji": "🟣"},
-    {"price": 4409.15, "name": "4H поддержка",           "emoji": "🟣"},
-    {"price": 4363.59, "name": "МАКС Д / боковик 15",  "emoji": "🟡"},
-    {"price": 4325.70, "name": "4H поддержка",           "emoji": "🟣"},
-    {"price": 4300.21, "name": "ATR",                    "emoji": "🔵"},
-    {"price": 4278.40, "name": "4H поддержка",           "emoji": "🟣"},
-    {"price": 4236.83, "name": "МИН Д / боковик 15",  "emoji": "🟡"},
-    {"price": 4191.28, "name": "4H поддержка",           "emoji": "🟣"},
-    {"price": 4139.02, "name": "4H поддержка",           "emoji": "🟣"},
-    {"price": 4087.15, "name": "4H поддержка",           "emoji": "🟣"},
-    {"price": 4044.99, "name": "4H поддержка",           "emoji": "🟣"},
-    {"price": 4006.70, "name": "4H поддержка",           "emoji": "🟣"},
-    {"price": 4407.77, "name": "4H поддержка",           "emoji": "🟣"},
-    {"price": 3976.60, "name": "4H поддержка",           "emoji": "🟣"},
-    {"price": 3929.61, "name": "4H поддержка",           "emoji": "🟣"},
-    {"price": 3899.69, "name": "4H поддержка",           "emoji": "🟣"},
-   ]
+    {"price": 4486.72, "name": "30M поддержка",         "emoji": "🟣"},
+    {"price": 4455.32, "name": "1H поддержка",          "emoji": "🟣"},
+    {"price": 4426.61, "name": "4H поддержка",          "emoji": "🔵"},
+    {"price": 4411.84, "name": "30M поддержка",         "emoji": "🟣"},
+    {"price": 4407.77, "name": "4H поддержка",          "emoji": "🔵"},
+    {"price": 4388.03, "name": "4H поддержка",          "emoji": "🔵"},
+    {"price": 4368.30, "name": "4H поддержка",          "emoji": "🔵"},
+    {"price": 4353.40, "name": "МАКС Д / боковик M15", "emoji": "🟡"},
+    {"price": 4328.82, "name": "4H поддержка",          "emoji": "🔵"},
+    {"price": 4304.60, "name": "ATR",                   "emoji": "🔵"},
+    {"price": 4288.45, "name": "4H поддержка",          "emoji": "🔵"},
+    {"price": 4268.55, "name": "МИН Д / боковик M15",  "emoji": "🟡"},
+    {"price": 4245.39, "name": "4H поддержка",          "emoji": "🔵"},
+    {"price": 4215.78, "name": "1H поддержка",          "emoji": "🟣"},
+    {"price": 4188.87, "name": "1H поддержка",          "emoji": "🟣"},
+]
 
-TOLERANCE = 1.50  # ±1.50 пунктов
+TOLERANCE = 1.50
 
-# ══════════════════════════════════════
-# Состояние алертов
-# ══════════════════════════════════════
 last_alerted = {lvl["price"]: 0 for lvl in LEVELS}
 
 
-def get_gold_price():
-    """Получаем цену — Polygon.io первый, остальные резервные"""
+# ══════════════════════════════════════
+# Веб-сервер — чтобы Render не засыпал
+# ══════════════════════════════════════
+class PingHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"XAU/USD Bot is running!")
 
-    # Источник 1: Polygon.io — реальная цена без задержки
+    def log_message(self, format, *args):
+        pass  # отключаем лишние логи
+
+def start_web_server():
+    server = HTTPServer(("0.0.0.0", 10000), PingHandler)
+    server.serve_forever()
+
+
+# ══════════════════════════════════════
+# Цена
+# ══════════════════════════════════════
+def get_gold_price():
+    # Polygon.io
     try:
         url = f"https://api.polygon.io/v2/last/trade/C:XAUUSD?apiKey={POLYGON_KEY}"
         r = requests.get(url, timeout=8)
@@ -57,7 +71,6 @@ def get_gold_price():
             if price > 3000:
                 print(f"  [polygon] {price:.2f}")
                 return price
-        # Polygon forex endpoint
         url2 = f"https://api.polygon.io/v1/last_quote/currencies/XAU/USD?apiKey={POLYGON_KEY}"
         r2 = requests.get(url2, timeout=8)
         data2 = r2.json()
@@ -69,7 +82,7 @@ def get_gold_price():
     except Exception as e:
         print(f"  polygon fail: {e}")
 
-    # Источник 2: Twelve Data — резерв
+    # Twelve Data
     try:
         url = f"https://api.twelvedata.com/price?symbol=XAU/USD&apikey={TWELVEDATA_KEY}"
         r = requests.get(url, timeout=8)
@@ -77,12 +90,12 @@ def get_gold_price():
         if "price" in data:
             price = float(data["price"])
             if price > 3000:
-                print(f"  [twelvedata резерв] {price:.2f}")
+                print(f"  [twelvedata] {price:.2f}")
                 return price
     except Exception as e:
         print(f"  twelvedata fail: {e}")
 
-    # Источник 3: Yahoo Finance — последний резерв
+    # Yahoo Finance
     try:
         url = "https://query1.finance.yahoo.com/v8/finance/chart/XAUUSD=X"
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -90,7 +103,7 @@ def get_gold_price():
         data = r.json()
         price = float(data["chart"]["result"][0]["meta"]["regularMarketPrice"])
         if price > 3000:
-            print(f"  [yahoo резерв] {price:.2f}")
+            print(f"  [yahoo] {price:.2f}")
             return price
     except Exception as e:
         print(f"  yahoo fail: {e}")
@@ -101,11 +114,7 @@ def get_gold_price():
 
 def send_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": message,
-        "parse_mode": "HTML"
-    }
+    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "HTML"}
     try:
         r = requests.post(url, json=payload, timeout=10)
         return r.status_code == 200
@@ -117,14 +126,14 @@ def send_telegram(message):
 def send_test_message(price):
     price_str = f"{price:.2f}" if price else "недоступна"
     msg = (
-        "✅ <b>БОТ ПЕРЕЗАПУЩЕН НА ОБЛАКЕ!</b>\n\n"
-        "☁️ Сервер: Railway (24/7)\n"
-        "📡 Источник цены: Polygon.io (без задержки)\n"
+        "✅ <b>БОТ ЗАПУЩЕН НА RENDER!</b>\n\n"
+        "☁️ Сервер: Render (24/7)\n"
+        "📡 Источник цены: Polygon.io\n"
         "📊 Инструмент: XAU/USD\n"
         f"💰 Текущая цена: <b>{price_str}</b>\n"
         f"⏱ Проверка каждую минуту\n"
         f"🔕 Повтор алерта: раз в 15 мин\n"
-        f"📐 Допуск касания: ±{TOLERANCE} пунктов\n\n"
+        f"📐 Допуск: ±{TOLERANCE} пунктов\n\n"
         "<b>Слежу за уровнями:</b>\n"
         + "\n".join([f"{l['emoji']} <b>{l['price']}</b> — {l['name']}" for l in LEVELS])
         + "\n\n🟢 Мониторинг активен"
@@ -141,7 +150,6 @@ def check_levels(price):
     for lvl in LEVELS:
         level_price = lvl["price"]
         diff = abs(price - level_price)
-
         if diff <= TOLERANCE:
             time_since = now_ts - last_alerted[level_price]
             if time_since >= ALERT_COOLDOWN:
@@ -162,7 +170,7 @@ def check_levels(price):
 
 def main():
     print("=" * 40)
-    print("   XAU/USD ALERT BOT (POLYGON)")
+    print("   XAU/USD ALERT BOT (RENDER)")
     print("=" * 40)
     print(f"📢 Канал: {TELEGRAM_CHAT_ID}")
     print(f"📋 Уровней: {len(LEVELS)}")
@@ -170,6 +178,11 @@ def main():
     print(f"🔕 Повтор: раз в 15 мин")
     print(f"📐 Допуск: ±{TOLERANCE} пунктов")
     print("─" * 40)
+
+    # Запускаем веб-сервер в фоне
+    t = threading.Thread(target=start_web_server, daemon=True)
+    t.start()
+    print("🌐 Веб-сервер запущен (порт 10000)")
 
     print("\n⏳ Получаю текущую цену...")
     price = get_gold_price()
