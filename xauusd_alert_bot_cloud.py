@@ -1,16 +1,12 @@
 import requests
 import time
-import threading
-import os
 from datetime import datetime
-from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # ══════════════════════════════════════
 # Настройки
 # ══════════════════════════════════════
 TELEGRAM_TOKEN    = "7456674909:AAHOzkE4saghYV1qdwSx-GoKFnA-psM74nE"
 TELEGRAM_CHAT_ID  = "@Profit_XAUUSD_WinRate85"
-POLYGON_KEY       = "t36EhphV3LND4v2z8ispE2B2fa3lEe1t"
 TWELVEDATA_KEY    = "a6b7b79510d24bb194dbf6f35efaa4d6"
 CHECK_INTERVAL    = 60
 ALERT_COOLDOWN    = 900
@@ -40,46 +36,34 @@ TOLERANCE = 1.50
 last_alerted = {lvl["price"]: 0 for lvl in LEVELS}
 
 
-# ══════════════════════════════════════
-# Веб-сервер — ЗАПУСКАЕТСЯ ПЕРВЫМ
-# ══════════════════════════════════════
-class PingHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header("Content-Type", "text/plain")
-        self.end_headers()
-        self.wfile.write(b"XAU/USD Bot is running!")
-
-    def log_message(self, format, *args):
-        pass
-
-def start_web_server():
-    port = int(os.environ.get("PORT", 10000))
-    server = HTTPServer(("0.0.0.0", port), PingHandler)
-    print(f"🌐 Веб-сервер запущен на порту {port}", flush=True)
-    server.serve_forever()
-
-
-# ══════════════════════════════════════
-# Источники цены
-# ══════════════════════════════════════
 def get_gold_price():
-
-    # Источник 1: Metals.live — бесплатный, без ключа
+    # Источник 1: Binance XAUUSDT — открытый API, не блокируется
     try:
-        url = "https://metals.live/api/v1/latest"
+        url = "https://api.binance.com/api/v3/ticker/price?symbol=XAUUSDT"
         r = requests.get(url, timeout=8)
         data = r.json()
-        for item in data:
-            if item.get("gold"):
-                price = float(item["gold"])
-                if price > 3000:
-                    print(f"  [metals.live] {price:.2f}", flush=True)
-                    return price
+        if "price" in data:
+            price = float(data["price"])
+            if price > 3000:
+                print(f"  [binance] {price:.2f}", flush=True)
+                return price
     except Exception as e:
-        print(f"  metals.live fail: {e}", flush=True)
+        print(f"  binance fail: {e}", flush=True)
 
-    # Источник 2: Twelve Data
+    # Источник 2: Binance резервный endpoint
+    try:
+        url = "https://api.binance.com/api/v3/avgPrice?symbol=XAUUSDT"
+        r = requests.get(url, timeout=8)
+        data = r.json()
+        if "price" in data:
+            price = float(data["price"])
+            if price > 3000:
+                print(f"  [binance avg] {price:.2f}", flush=True)
+                return price
+    except Exception as e:
+        print(f"  binance avg fail: {e}", flush=True)
+
+    # Источник 3: Twelve Data
     try:
         url = f"https://api.twelvedata.com/price?symbol=XAU/USD&apikey={TWELVEDATA_KEY}"
         r = requests.get(url, timeout=8)
@@ -91,32 +75,6 @@ def get_gold_price():
                 return price
     except Exception as e:
         print(f"  twelvedata fail: {e}", flush=True)
-
-    # Источник 3: Polygon.io
-    try:
-        url = f"https://api.polygon.io/v2/last/trade/C:XAUUSD?apiKey={POLYGON_KEY}"
-        r = requests.get(url, timeout=8)
-        data = r.json()
-        if data.get("status") == "OK" and "results" in data:
-            price = float(data["results"]["p"])
-            if price > 3000:
-                print(f"  [polygon] {price:.2f}", flush=True)
-                return price
-    except Exception as e:
-        print(f"  polygon fail: {e}", flush=True)
-
-    # Источник 4: Yahoo Finance
-    try:
-        url = "https://query1.finance.yahoo.com/v8/finance/chart/XAUUSD=X"
-        headers = {"User-Agent": "Mozilla/5.0"}
-        r = requests.get(url, headers=headers, timeout=8)
-        data = r.json()
-        price = float(data["chart"]["result"][0]["meta"]["regularMarketPrice"])
-        if price > 3000:
-            print(f"  [yahoo] {price:.2f}", flush=True)
-            return price
-    except Exception as e:
-        print(f"  yahoo fail: {e}", flush=True)
 
     print("  ❌ Все источники недоступны", flush=True)
     return None
@@ -136,9 +94,9 @@ def send_telegram(message):
 def send_test_message(price):
     price_str = f"{price:.2f}" if price else "недоступна"
     msg = (
-        "✅ <b>БОТ ЗАПУЩЕН НА RENDER!</b>\n\n"
-        "☁️ Сервер: Render (24/7)\n"
-        "📡 Источник цены: Polygon.io + резерв\n"
+        "✅ <b>БОТ ЗАПУЩЕН!</b>\n\n"
+        "☁️ Сервер: GitHub Actions (24/7)\n"
+        "📡 Источник цены: Binance (реальное время)\n"
         "📊 Инструмент: XAU/USD\n"
         f"💰 Текущая цена: <b>{price_str}</b>\n"
         f"⏱ Проверка каждую минуту\n"
@@ -179,14 +137,8 @@ def check_levels(price):
 
 
 def main():
-    # Веб-сервер запускаем ПЕРВЫМ до всего остального
-    port = int(os.environ.get("PORT", 10000))
-    t = threading.Thread(target=start_web_server, daemon=True)
-    t.start()
-    time.sleep(2)  # ждём пока сервер поднимется
-
     print("=" * 40, flush=True)
-    print("   XAU/USD ALERT BOT (RENDER)", flush=True)
+    print("   XAU/USD ALERT BOT", flush=True)
     print("=" * 40, flush=True)
     print(f"📢 Канал: {TELEGRAM_CHAT_ID}", flush=True)
     print(f"📋 Уровней: {len(LEVELS)}", flush=True)
