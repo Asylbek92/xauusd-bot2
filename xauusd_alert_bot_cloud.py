@@ -1,6 +1,7 @@
 import requests
 import time
 import threading
+import os
 from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
@@ -36,12 +37,11 @@ LEVELS = [
 ]
 
 TOLERANCE = 1.50
-
 last_alerted = {lvl["price"]: 0 for lvl in LEVELS}
 
 
 # ══════════════════════════════════════
-# Веб-сервер — чтобы Render не засыпал
+# Веб-сервер — Render требует открытый порт
 # ══════════════════════════════════════
 class PingHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -50,10 +50,12 @@ class PingHandler(BaseHTTPRequestHandler):
         self.wfile.write(b"XAU/USD Bot is running!")
 
     def log_message(self, format, *args):
-        pass  # отключаем лишние логи
+        pass
 
 def start_web_server():
-    server = HTTPServer(("0.0.0.0", 10000), PingHandler)
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), PingHandler)
+    print(f"🌐 Веб-сервер запущен на порту {port}")
     server.serve_forever()
 
 
@@ -179,10 +181,10 @@ def main():
     print(f"📐 Допуск: ±{TOLERANCE} пунктов")
     print("─" * 40)
 
-    # Запускаем веб-сервер в фоне
+    # Запускаем веб-сервер в фоновом потоке
     t = threading.Thread(target=start_web_server, daemon=True)
     t.start()
-    print("🌐 Веб-сервер запущен (порт 10000)")
+    time.sleep(1)  # даём серверу секунду запуститься
 
     print("\n⏳ Получаю текущую цену...")
     price = get_gold_price()
