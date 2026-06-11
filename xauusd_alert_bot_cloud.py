@@ -41,11 +41,12 @@ last_alerted = {lvl["price"]: 0 for lvl in LEVELS}
 
 
 # ══════════════════════════════════════
-# Веб-сервер — Render требует открытый порт
+# Веб-сервер — ЗАПУСКАЕТСЯ ПЕРВЫМ
 # ══════════════════════════════════════
 class PingHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
+        self.send_header("Content-Type", "text/plain")
         self.end_headers()
         self.wfile.write(b"XAU/USD Bot is running!")
 
@@ -55,36 +56,30 @@ class PingHandler(BaseHTTPRequestHandler):
 def start_web_server():
     port = int(os.environ.get("PORT", 10000))
     server = HTTPServer(("0.0.0.0", port), PingHandler)
-    print(f"🌐 Веб-сервер запущен на порту {port}")
+    print(f"🌐 Веб-сервер запущен на порту {port}", flush=True)
     server.serve_forever()
 
 
 # ══════════════════════════════════════
-# Цена
+# Источники цены
 # ══════════════════════════════════════
 def get_gold_price():
-    # Polygon.io
+
+    # Источник 1: Metals.live — бесплатный, без ключа
     try:
-        url = f"https://api.polygon.io/v2/last/trade/C:XAUUSD?apiKey={POLYGON_KEY}"
+        url = "https://metals.live/api/v1/latest"
         r = requests.get(url, timeout=8)
         data = r.json()
-        if data.get("status") == "OK" and "results" in data:
-            price = float(data["results"]["p"])
-            if price > 3000:
-                print(f"  [polygon] {price:.2f}")
-                return price
-        url2 = f"https://api.polygon.io/v1/last_quote/currencies/XAU/USD?apiKey={POLYGON_KEY}"
-        r2 = requests.get(url2, timeout=8)
-        data2 = r2.json()
-        if "last" in data2:
-            price = float(data2["last"]["ask"] + data2["last"]["bid"]) / 2
-            if price > 3000:
-                print(f"  [polygon forex] {price:.2f}")
-                return price
+        for item in data:
+            if item.get("gold"):
+                price = float(item["gold"])
+                if price > 3000:
+                    print(f"  [metals.live] {price:.2f}", flush=True)
+                    return price
     except Exception as e:
-        print(f"  polygon fail: {e}")
+        print(f"  metals.live fail: {e}", flush=True)
 
-    # Twelve Data
+    # Источник 2: Twelve Data
     try:
         url = f"https://api.twelvedata.com/price?symbol=XAU/USD&apikey={TWELVEDATA_KEY}"
         r = requests.get(url, timeout=8)
@@ -92,12 +87,25 @@ def get_gold_price():
         if "price" in data:
             price = float(data["price"])
             if price > 3000:
-                print(f"  [twelvedata] {price:.2f}")
+                print(f"  [twelvedata] {price:.2f}", flush=True)
                 return price
     except Exception as e:
-        print(f"  twelvedata fail: {e}")
+        print(f"  twelvedata fail: {e}", flush=True)
 
-    # Yahoo Finance
+    # Источник 3: Polygon.io
+    try:
+        url = f"https://api.polygon.io/v2/last/trade/C:XAUUSD?apiKey={POLYGON_KEY}"
+        r = requests.get(url, timeout=8)
+        data = r.json()
+        if data.get("status") == "OK" and "results" in data:
+            price = float(data["results"]["p"])
+            if price > 3000:
+                print(f"  [polygon] {price:.2f}", flush=True)
+                return price
+    except Exception as e:
+        print(f"  polygon fail: {e}", flush=True)
+
+    # Источник 4: Yahoo Finance
     try:
         url = "https://query1.finance.yahoo.com/v8/finance/chart/XAUUSD=X"
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -105,12 +113,12 @@ def get_gold_price():
         data = r.json()
         price = float(data["chart"]["result"][0]["meta"]["regularMarketPrice"])
         if price > 3000:
-            print(f"  [yahoo] {price:.2f}")
+            print(f"  [yahoo] {price:.2f}", flush=True)
             return price
     except Exception as e:
-        print(f"  yahoo fail: {e}")
+        print(f"  yahoo fail: {e}", flush=True)
 
-    print("  ❌ Все источники недоступны")
+    print("  ❌ Все источники недоступны", flush=True)
     return None
 
 
@@ -121,7 +129,7 @@ def send_telegram(message):
         r = requests.post(url, json=payload, timeout=10)
         return r.status_code == 200
     except Exception as e:
-        print(f"Ошибка Telegram: {e}")
+        print(f"Ошибка Telegram: {e}", flush=True)
         return False
 
 
@@ -130,7 +138,7 @@ def send_test_message(price):
     msg = (
         "✅ <b>БОТ ЗАПУЩЕН НА RENDER!</b>\n\n"
         "☁️ Сервер: Render (24/7)\n"
-        "📡 Источник цены: Polygon.io\n"
+        "📡 Источник цены: Polygon.io + резерв\n"
         "📊 Инструмент: XAU/USD\n"
         f"💰 Текущая цена: <b>{price_str}</b>\n"
         f"⏱ Проверка каждую минуту\n"
@@ -142,9 +150,9 @@ def send_test_message(price):
     )
     ok = send_telegram(msg)
     if ok:
-        print("✅ Тестовое сообщение отправлено!")
+        print("✅ Тестовое сообщение отправлено!", flush=True)
     else:
-        print("❌ Ошибка отправки в Telegram")
+        print("❌ Ошибка отправки в Telegram", flush=True)
 
 
 def check_levels(price):
@@ -167,42 +175,43 @@ def check_levels(price):
                 )
                 if send_telegram(msg):
                     last_alerted[level_price] = now_ts
-                    print(f"🔔 Алерт: {lvl['name']} @ {price:.2f}")
+                    print(f"🔔 Алерт: {lvl['name']} @ {price:.2f}", flush=True)
 
 
 def main():
-    print("=" * 40)
-    print("   XAU/USD ALERT BOT (RENDER)")
-    print("=" * 40)
-    print(f"📢 Канал: {TELEGRAM_CHAT_ID}")
-    print(f"📋 Уровней: {len(LEVELS)}")
-    print(f"⏱  Проверка: каждую минуту")
-    print(f"🔕 Повтор: раз в 15 мин")
-    print(f"📐 Допуск: ±{TOLERANCE} пунктов")
-    print("─" * 40)
-
-    # Запускаем веб-сервер в фоновом потоке
+    # Веб-сервер запускаем ПЕРВЫМ до всего остального
+    port = int(os.environ.get("PORT", 10000))
     t = threading.Thread(target=start_web_server, daemon=True)
     t.start()
-    time.sleep(1)  # даём серверу секунду запуститься
+    time.sleep(2)  # ждём пока сервер поднимется
 
-    print("\n⏳ Получаю текущую цену...")
+    print("=" * 40, flush=True)
+    print("   XAU/USD ALERT BOT (RENDER)", flush=True)
+    print("=" * 40, flush=True)
+    print(f"📢 Канал: {TELEGRAM_CHAT_ID}", flush=True)
+    print(f"📋 Уровней: {len(LEVELS)}", flush=True)
+    print(f"⏱  Проверка: каждую минуту", flush=True)
+    print(f"🔕 Повтор: раз в 15 мин", flush=True)
+    print(f"📐 Допуск: ±{TOLERANCE} пунктов", flush=True)
+    print("─" * 40, flush=True)
+
+    print("\n⏳ Получаю текущую цену...", flush=True)
     price = get_gold_price()
     if price:
-        print(f"💰 Текущая цена: {price:.2f}")
+        print(f"💰 Текущая цена: {price:.2f}", flush=True)
     send_test_message(price)
 
-    print("─" * 40)
-    print("🚀 Мониторинг запущен...\n")
+    print("─" * 40, flush=True)
+    print("🚀 Мониторинг запущен...\n", flush=True)
 
     while True:
         price = get_gold_price()
         if price:
             now = datetime.now().strftime("%H:%M:%S")
-            print(f"[{now}] XAU/USD = {price:.2f}")
+            print(f"[{now}] XAU/USD = {price:.2f}", flush=True)
             check_levels(price)
         else:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Цена недоступна")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Цена недоступна", flush=True)
         time.sleep(CHECK_INTERVAL)
 
 
