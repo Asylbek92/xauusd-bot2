@@ -8,12 +8,12 @@ from datetime import datetime
 TELEGRAM_TOKEN    = "7456674909:AAHOzkE4saghYV1qdwSx-GoKFnA-psM74nE"
 TELEGRAM_CHAT_ID  = "@Profit_XAUUSD_WinRate85"
 TWELVEDATA_KEY    = "a6b7b79510d24bb194dbf6f35efaa4d6"
-CHECK_INTERVAL    = 60   # Проверка каждую минуту
-ALERT_COOLDOWN    = 900  # Повтор алерта на тот же уровень через 15 мин
+CHECK_INTERVAL    = 60
+ALERT_COOLDOWN    = 900
 TOLERANCE         = 1.50
 
 # ══════════════════════════════════════
-# Уровни (ИСПРАВЛЕНО: все пробелы в ключах удалены)
+# Уровни (все пробелы в ключах и значениях убраны)
 # ══════════════════════════════════════
 LEVELS = [
     {"price": 4486.72, "name": "30M поддержка",          "emoji": "🟣"},
@@ -33,39 +33,43 @@ LEVELS = [
     {"price": 4188.87, "name": "1H поддержка",           "emoji": "🟣"},
 ]
 
-# Инициализация словаря для кулдауна (без пробелов в ключах!)
 last_alerted = {lvl["price"]: 0 for lvl in LEVELS}
 
 def get_gold_price():
-    # 1. Binance (основной, без лимитов запросов)
+    # 1. Binance XAUUSDT
     try:
         url = "https://api.binance.com/api/v3/ticker/price?symbol=XAUUSDT"
         r = requests.get(url, timeout=8)
         data = r.json()
-        if "price" in data:
-            # replace(',', '.') на случай, если API вернёт число с запятой
-            price = float(str(data["price"]).replace(',', '.'))
+        if r.status_code == 200 and "price" in data:
+            price = float(data["price"])
             if price > 3000:
                 print(f"  [binance] {price:.2f}", flush=True)
                 return price
     except Exception as e:
         print(f"  binance fail: {e}", flush=True)
-    
-    # 2. Twelve Data (резервный)
+
+    # 2. Twelve Data (основной стабильный источник для XAU/USD)
     try:
-        # ИСПРАВЛЕНО: убраны пробелы в URL
+        # ИСПРАВЛЕНО: убраны все лишние пробелы в URL и f-строке
         url = f"https://api.twelvedata.com/price?symbol=XAU/USD&apikey={TWELVEDATA_KEY}"
         r = requests.get(url, timeout=8)
         data = r.json()
+        
+        # Проверка на ошибку API (лимиты, неверный ключ)
+        if "code" in data:
+            print(f"  twelvedata API error: {data.get('message')}", flush=True)
+            return None
+            
         if "price" in data:
-            price = float(str(data["price"]).replace(',', '.'))
+            price = float(data["price"])
             if price > 3000:
                 print(f"  [twelvedata] {price:.2f}", flush=True)
                 return price
     except Exception as e:
         print(f"  twelvedata fail: {e}", flush=True)
-        
-    print("  ❌ Все источники цены недоступны", flush=True)
+
+    print("  ❌ Все источники недоступны", flush=True)
     return None
 
 def send_telegram(message):
@@ -76,11 +80,10 @@ def send_telegram(message):
         if r.status_code == 200:
             return True
         else:
-            # ТЕПЕРЬ МЫ ВИДИМ ТОЧНУЮ ПРИЧИНУ, ПОЧЕМУ TELEGRAM ОТКЛОНИЛ СООБЩЕНИЕ
-            print(f"❌ Ошибка Telegram API: {r.status_code} | {r.text}", flush=True)
+            print(f"❌ Telegram API Error {r.status_code}: {r.text}", flush=True)
             return False
     except Exception as e:
-        print(f"❌ Сетевая ошибка Telegram: {e}", flush=True)
+        print(f"❌ Ошибка сети Telegram: {e}", flush=True)
         return False
 
 def send_test_message(price):
@@ -100,14 +103,13 @@ def send_test_message(price):
     if send_telegram(msg):
         print("✅ Тестовое сообщение отправлено!", flush=True)
     else:
-        print("❌ Ошибка отправки тестового сообщения (см. лог выше)", flush=True)
+        print("❌ Ошибка отправки тестового сообщения", flush=True)
 
 def check_levels(price):
     now_ts = time.time()
     for lvl in LEVELS:
         level_price = lvl["price"]
         diff = abs(price - level_price)
-        
         if diff <= TOLERANCE:
             time_since = now_ts - last_alerted[level_price]
             if time_since >= ALERT_COOLDOWN:
@@ -121,15 +123,12 @@ def check_levels(price):
                     f"📐 Подход: {direction}\n"
                     f"🕐 Время: {now_str}"
                 )
-                
-                # Логируем попытку отправки, чтобы вы видели, что бот сработал
-                print(f"📤 Попытка отправки алерта: {lvl['name']} @ {price:.2f}", flush=True)
-                
+                print(f"📤 Отправка алерта: {lvl['name']} @ {price:.2f}", flush=True)
                 if send_telegram(msg):
                     last_alerted[level_price] = now_ts
-                    print(f"✅ Алерт успешно отправлен: {lvl['name']}", flush=True)
+                    print(f"✅ Алерт отправлен успешно", flush=True)
                 else:
-                    print(f"⚠️ Сбой отправки алерта (см. ошибку Telegram выше)", flush=True)
+                    print(f"⚠️ Ошибка отправки алерта", flush=True)
 
 def main():
     print("=" * 45, flush=True)
@@ -141,7 +140,7 @@ def main():
     print(f"🔕 Повтор: раз в 15 мин", flush=True)
     print(f"📐 Допуск: ±{TOLERANCE} пунктов", flush=True)
     print("─" * 45, flush=True)
-    
+
     print("\n⏳ Получаю текущую цену...", flush=True)
     price = get_gold_price()
     if price:
@@ -149,10 +148,10 @@ def main():
         send_test_message(price)
     else:
         print("❌ Не удалось получить цену при запуске", flush=True)
-    
+
     print("─" * 45, flush=True)
     print("🚀 Мониторинг запущен...\n", flush=True)
-    
+
     while True:
         price = get_gold_price()
         if price:
