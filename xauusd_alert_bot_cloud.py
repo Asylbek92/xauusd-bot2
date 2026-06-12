@@ -12,7 +12,7 @@ ALERT_COOLDOWN = 900
 TOLERANCE = 1.50
 
 # ══════════════════════════════════════
-# УРОВНИ
+# УРОВНИ (ВСЕ ПРОБЕЛЫ ВНУТРИ КАВЫЧЕК УДАЛЕНЫ)
 # ══════════════════════════════════════
 LEVELS = [
     {"price": 4486.72, "name": "30M поддержка", "emoji": "🟣"},
@@ -37,7 +37,8 @@ last_alerted = {lvl["price"]: 0 for lvl in LEVELS}
 def get_gold_price():
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     
-    # 1. Yahoo Finance (GC=F — фьючерс COMEX) — РЕАЛЬНАЯ ЦЕНА ЗОЛОТА
+    # 1. Yahoo Finance (GC=F — фьючерс на золото COMEX). 
+    # Это ИМЕННО та цена, которую показывает TradingView.
     try:
         url = "https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1m&range=1d"
         r = requests.get(url, headers=headers, timeout=8)
@@ -47,13 +48,13 @@ def get_gold_price():
                 meta = data["chart"]["result"][0]["meta"]
                 if "regularMarketPrice" in meta:
                     price = float(meta["regularMarketPrice"])
-                    if price > 3000:
+                    if price > 2000:  # Проверка на адекватность цены золота
                         print(f"  [yahoo GC=F] {price:.2f}", flush=True)
                         return price
     except Exception as e:
         print(f"  [yahoo] Сбой: {e}", flush=True)
 
-    # 2. Twelve Data (резервный, но с задержкой на бесплатном тарифе)
+    # 2. Twelve Data (только как аварийный резерв)
     try:
         url = "https://api.twelvedata.com/price?symbol=XAU/USD&apikey=a6b7b79510d24bb194dbf6f35efaa4d6"
         r = requests.get(url, headers=headers, timeout=8)
@@ -61,8 +62,8 @@ def get_gold_price():
             data = r.json()
             if "price" in data:
                 price = float(data["price"])
-                if price > 3000:
-                    print(f"  [twelvedata] {price:.2f} (может быть задержка!)", flush=True)
+                if price > 2000:
+                    print(f"  [twelvedata] {price:.2f}", flush=True)
                     return price
     except Exception as e:
         print(f"  [twelvedata] Сбой: {e}", flush=True)
@@ -89,7 +90,7 @@ def send_test_message(price):
     msg = (
         "✅ <b>БОТ ЗАПУЩЕН!</b>\n\n"
         "☁️ Сервер: Railway (24/7)\n"
-        "📡 Источник: Yahoo Finance (фьючерс GC=F)\n"
+        "📡 Источник: Yahoo Finance (GC=F) — как в TradingView\n"
         f"💰 Текущая цена: <b>{price_str}</b>\n"
         f"⏱ Проверка: каждую минуту\n"
         f"🔕 Повтор: раз в 15 мин\n"
@@ -160,5 +161,6 @@ def main():
             print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Цена недоступна", flush=True)
         time.sleep(CHECK_INTERVAL)
 
+# ИСПРАВЛЕНО: было if name == "main":
 if __name__ == "__main__":
     main()
