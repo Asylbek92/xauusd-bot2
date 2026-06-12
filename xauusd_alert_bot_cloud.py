@@ -7,13 +7,12 @@ from datetime import datetime
 # ══════════════════════════════════════
 TELEGRAM_TOKEN = "7456674909:AAHOzkE4saghYV1qdwSx-GoKFnA-psM74nE"
 TELEGRAM_CHAT_ID = "@Profit_XAUUSD_WinRate85"
-TWELVEDATA_KEY = "a6b7b79510d24bb194dbf6f35efaa4d6"
 CHECK_INTERVAL = 60
 ALERT_COOLDOWN = 900
 TOLERANCE = 1.50
 
 # ══════════════════════════════════════
-# УРОВНИ (ВСЕ ПРОБЕЛЫ ВНУТРИ КАВЫЧЕК УДАЛЕНЫ)
+# УРОВНИ (ВСЕ ПРОБЕЛЫ УДАЛЕНЫ)
 # ══════════════════════════════════════
 LEVELS = [
     {"price": 4486.72, "name": "30M поддержка", "emoji": "🟣"},
@@ -38,37 +37,31 @@ last_alerted = {lvl["price"]: 0 for lvl in LEVELS}
 def get_gold_price():
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     
-    # 1. Binance
+    # 1. CoinGecko PAXG (основной)
     try:
-        url = "https://api.binance.com/api/v3/ticker/price?symbol=XAUUSDT"
+        url = "https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd"
         r = requests.get(url, headers=headers, timeout=8)
         if r.status_code == 200:
             data = r.json()
-            if "price" in data:
-                price = float(data["price"])
-                if price > 3000:
-                    print(f"  [binance] {price:.2f}", flush=True)
-                    return price
-        else:
-            print(f"  [binance] Ошибка {r.status_code}: {r.text[:50]}", flush=True)
+            if "pax-gold" in data and "usd" in data["pax-gold"]:
+                price = float(data["pax-gold"]["usd"])
+                print(f"  [coingecko PAXG] {price:.2f}", flush=True)
+                return price
     except Exception as e:
-        print(f"  [binance] Сбой: {e}", flush=True)
+        print(f"  [coingecko] Сбой: {e}", flush=True)
 
-    # 2. Twelve Data
+    # 2. Metals.live (резервный)
     try:
-        url = f"https://api.twelvedata.com/price?symbol=XAU/USD&apikey={TWELVEDATA_KEY}"
-        r = requests.get(url, headers=headers, timeout=8)
+        url = "https://api.metals.live/v1/spot"
+        r = requests.get(url, timeout=8)
         if r.status_code == 200:
             data = r.json()
-            if "price" in data:
-                price = float(data["price"])
-                if price > 3000:
-                    print(f"  [twelvedata] {price:.2f}", flush=True)
-                    return price
-        else:
-            print(f"  [twelvedata] Ошибка {r.status_code}: {r.text[:50]}", flush=True)
+            if isinstance(data, list) and len(data) > 0 and "gold" in data[0]:
+                price = float(data[0]["gold"])
+                print(f"  [metals.live] {price:.2f}", flush=True)
+                return price
     except Exception as e:
-        print(f"  [twelvedata] Сбой: {e}", flush=True)
+        print(f"  [metals.live] Сбой: {e}", flush=True)
 
     print("  ❌ Все источники цены недоступны", flush=True)
     return None
@@ -92,7 +85,7 @@ def send_test_message(price):
     msg = (
         "✅ <b>БОТ ЗАПУЩЕН!</b>\n\n"
         "☁️ Сервер: Railway (24/7)\n"
-        "📡 Источник: Binance + Twelve Data\n"
+        "📡 Источник: CoinGecko PAXG + Metals.live\n"
         f"💰 Текущая цена: <b>{price_str}</b>\n"
         f"⏱ Проверка: каждую минуту\n"
         f"🔕 Повтор: раз в 15 мин\n"
@@ -163,5 +156,6 @@ def main():
             print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Цена недоступна", flush=True)
         time.sleep(CHECK_INTERVAL)
 
+# ИСПРАВЛЕНО: было if name == "main":
 if __name__ == "__main__":
     main()
