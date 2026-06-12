@@ -12,7 +12,7 @@ ALERT_COOLDOWN = 900
 TOLERANCE = 1.50
 
 # ══════════════════════════════════════
-# УРОВНИ (ВСЕ ПРОБЕЛЫ ВНУТРИ КАВЫЧЕК УДАЛЕНЫ)
+# УРОВНИ
 # ══════════════════════════════════════
 LEVELS = [
     {"price": 4486.72, "name": "30M поддержка", "emoji": "🟣"},
@@ -35,27 +35,30 @@ LEVELS = [
 last_alerted = {lvl["price"]: 0 for lvl in LEVELS}
 
 def get_gold_price():
-    """
-    Получает СПОТОВУЮ цену XAU/USD.
-    Основной источник: gold-api.com (бесплатно, без ключа).
-    Резервный: Twelve Data.
-    """
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     
-    # 1. Gold-API (спот XAU/USD)
+    # 1. Swissquote (Надежный бесплатный источник СПОТ цены XAU/USD)
     try:
-        r = requests.get("https://api.gold-api.com/price/XAU/USD", headers=headers, timeout=8)
+        url = "https://forex-data-feed.swissquote.com/public-quotes/bboquotes/instrument/XAU/USD"
+        r = requests.get(url, headers=headers, timeout=8)
         if r.status_code == 200:
             data = r.json()
-            if "price" in data:
-                price = float(data["price"])
-                if price > 2000:      # проверка адекватности
-                    print(f"  [gold-api] {price:.2f}", flush=True)
-                    return price
+            if data and len(data) > 0:
+                # Берем первый доступный профиль ликвидности
+                profiles = data[0].get("spreadProfilePrices", [])
+                if profiles:
+                    bid = profiles[0].get("bid")
+                    ask = profiles[0].get("ask")
+                    if bid and ask:
+                        # Среднее между ценой покупки и продажи (mid-price)
+                        price = float((bid + ask) / 2)
+                        if price > 2000:
+                            print(f"  [swissquote XAU/USD] {price:.2f}", flush=True)
+                            return price
     except Exception as e:
-        print(f"  [gold-api] Сбой: {e}", flush=True)
+        print(f"  [swissquote] Сбой: {e}", flush=True)
 
-    # 2. Twelve Data (ваш ключ)
+    # 2. Twelve Data (Аварийный резерв)
     try:
         url = "https://api.twelvedata.com/price?symbol=XAU/USD&apikey=a6b7b79510d24bb194dbf6f35efaa4d6"
         r = requests.get(url, headers=headers, timeout=8)
@@ -91,7 +94,7 @@ def send_test_message(price):
     msg = (
         "✅ <b>БОТ ЗАПУЩЕН!</b>\n\n"
         "☁️ Сервер: Railway (24/7)\n"
-        "📡 Источник: Gold-API + Twelve Data (спот XAU/USD)\n"
+        "📡 Источник: Swissquote (Спот XAU/USD) — как в TradingView\n"
         f"💰 Текущая цена: <b>{price_str}</b>\n"
         f"⏱ Проверка: каждую минуту\n"
         f"🔕 Повтор: раз в 15 мин\n"
