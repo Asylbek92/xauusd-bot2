@@ -7,6 +7,7 @@ from datetime import datetime
 # ══════════════════════════════════════
 TELEGRAM_TOKEN    = "7456674909:AAHOzkE4saghYV1qdwSx-GoKFnA-psM74nE"
 TELEGRAM_CHAT_ID  = "@Profit_XAUUSD_WinRate85"
+POLYGON_KEY       = "t36EhphV3LND4v2z8ispE2B2fa3lEe1t"
 TWELVEDATA_KEY    = "a6b7b79510d24bb194dbf6f35efaa4d6"
 CHECK_INTERVAL    = 60
 ALERT_COOLDOWN    = 900
@@ -37,7 +38,9 @@ last_alerted = {lvl["price"]: 0 for lvl in LEVELS}
 
 
 def get_gold_price():
-    # Источник 1: Binance XAUUSDT — открытый API, не блокируется
+    """Получаем цену — Binance первый (универсальный), Polygon/TwelveData резерв"""
+
+    # Источник 1: Binance XAUUSDT — открытый API, работает везде
     try:
         url = "https://api.binance.com/api/v3/ticker/price?symbol=XAUUSDT"
         r = requests.get(url, timeout=8)
@@ -50,18 +53,18 @@ def get_gold_price():
     except Exception as e:
         print(f"  binance fail: {e}", flush=True)
 
-    # Источник 2: Binance резервный endpoint
+    # Источник 2: Polygon.io
     try:
-        url = "https://api.binance.com/api/v3/avgPrice?symbol=XAUUSDT"
+        url = f"https://api.polygon.io/v2/last/trade/C:XAUUSD?apiKey={POLYGON_KEY}"
         r = requests.get(url, timeout=8)
         data = r.json()
-        if "price" in data:
-            price = float(data["price"])
+        if data.get("status") == "OK" and "results" in data:
+            price = float(data["results"]["p"])
             if price > 3000:
-                print(f"  [binance avg] {price:.2f}", flush=True)
+                print(f"  [polygon] {price:.2f}", flush=True)
                 return price
     except Exception as e:
-        print(f"  binance avg fail: {e}", flush=True)
+        print(f"  polygon fail: {e}", flush=True)
 
     # Источник 3: Twelve Data
     try:
@@ -95,8 +98,8 @@ def send_test_message(price):
     price_str = f"{price:.2f}" if price else "недоступна"
     msg = (
         "✅ <b>БОТ ЗАПУЩЕН!</b>\n\n"
-        "☁️ Сервер: GitHub Actions (24/7)\n"
-        "📡 Источник цены: Binance (реальное время)\n"
+        "☁️ Сервер: Railway (24/7)\n"
+        "📡 Источник цены: Binance / Polygon\n"
         "📊 Инструмент: XAU/USD\n"
         f"💰 Текущая цена: <b>{price_str}</b>\n"
         f"⏱ Проверка каждую минуту\n"
@@ -138,7 +141,7 @@ def check_levels(price):
 
 def main():
     print("=" * 40, flush=True)
-    print("   XAU/USD ALERT BOT", flush=True)
+    print("   XAU/USD ALERT BOT (RAILWAY)", flush=True)
     print("=" * 40, flush=True)
     print(f"📢 Канал: {TELEGRAM_CHAT_ID}", flush=True)
     print(f"📋 Уровней: {len(LEVELS)}", flush=True)
