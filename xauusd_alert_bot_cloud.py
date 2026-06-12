@@ -7,9 +7,9 @@ from datetime import datetime
 # ══════════════════════════════════════
 TELEGRAM_TOKEN = "7456674909:AAHOzkE4saghYV1qdwSx-GoKFnA-psM74nE"
 TELEGRAM_CHAT_ID = "@Profit_XAUUSD_WinRate85"
-CHECK_INTERVAL = 60
-ALERT_COOLDOWN = 900
-TOLERANCE = 1.50
+CHECK_INTERVAL = 60          # секунд
+ALERT_COOLDOWN = 900         # секунд (15 мин)
+TOLERANCE = 1.50             # пунктов
 
 # ══════════════════════════════════════
 # УРОВНИ
@@ -35,30 +35,35 @@ LEVELS = [
 last_alerted = {lvl["price"]: 0 for lvl in LEVELS}
 
 def get_gold_price():
+    """
+    Получает спотовую цену XAU/USD.
+    Приоритет:
+      1. Swissquote (bid/ask mid, бесплатно, без ключа)
+      2. Twelve Data (ваш ключ, резерв)
+      3. Gold-API (публичный, без ключа)
+    """
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-    
-    # 1. Swissquote (Надежный бесплатный источник СПОТ цены XAU/USD)
+
+    # 1. Swissquote — чистый спот XAU/USD
     try:
         url = "https://forex-data-feed.swissquote.com/public-quotes/bboquotes/instrument/XAU/USD"
         r = requests.get(url, headers=headers, timeout=8)
         if r.status_code == 200:
             data = r.json()
             if data and len(data) > 0:
-                # Берем первый доступный профиль ликвидности
                 profiles = data[0].get("spreadProfilePrices", [])
                 if profiles:
                     bid = profiles[0].get("bid")
                     ask = profiles[0].get("ask")
                     if bid and ask:
-                        # Среднее между ценой покупки и продажи (mid-price)
-                        price = float((bid + ask) / 2)
+                        price = float((bid + ask) / 2)   # mid-price
                         if price > 2000:
-                            print(f"  [swissquote XAU/USD] {price:.2f}", flush=True)
+                            print(f"  [swissquote] {price:.2f}", flush=True)
                             return price
     except Exception as e:
         print(f"  [swissquote] Сбой: {e}", flush=True)
 
-    # 2. Twelve Data (Аварийный резерв)
+    # 2. Twelve Data (ваш API-ключ)
     try:
         url = "https://api.twelvedata.com/price?symbol=XAU/USD&apikey=a6b7b79510d24bb194dbf6f35efaa4d6"
         r = requests.get(url, headers=headers, timeout=8)
@@ -71,6 +76,19 @@ def get_gold_price():
                     return price
     except Exception as e:
         print(f"  [twelvedata] Сбой: {e}", flush=True)
+
+    # 3. Gold-API (публичный, без ключа)
+    try:
+        r = requests.get("https://api.gold-api.com/price/XAU/USD", headers=headers, timeout=8)
+        if r.status_code == 200:
+            data = r.json()
+            if "price" in data:
+                price = float(data["price"])
+                if price > 2000:
+                    print(f"  [gold-api] {price:.2f}", flush=True)
+                    return price
+    except Exception as e:
+        print(f"  [gold-api] Сбой: {e}", flush=True)
 
     print("  ❌ Все источники цены недоступны", flush=True)
     return None
@@ -113,7 +131,7 @@ def check_levels(price):
     for lvl in LEVELS:
         level_price = lvl["price"]
         diff = abs(price - level_price)
-        
+
         if diff <= TOLERANCE:
             time_since = now_ts - last_alerted[level_price]
             if time_since >= ALERT_COOLDOWN:
@@ -127,9 +145,9 @@ def check_levels(price):
                     f"📐 Подход: {direction}\n"
                     f"🕐 Время: {now_str}"
                 )
-                
+
                 print(f"📤 Попытка отправки: {lvl['name']} @ {price:.2f}", flush=True)
-                
+
                 if send_telegram(msg):
                     last_alerted[level_price] = now_ts
                     print(f"✅ Алерт отправлен: {lvl['name']}", flush=True)
@@ -143,7 +161,7 @@ def main():
     print(f"📢 Канал: {TELEGRAM_CHAT_ID}", flush=True)
     print(f"📋 Уровней: {len(LEVELS)}", flush=True)
     print("─" * 45, flush=True)
-    
+
     print("\n⏳ Получаю текущую цену...", flush=True)
     price = get_gold_price()
     if price:
@@ -151,10 +169,10 @@ def main():
         send_test_message(price)
     else:
         print("❌ Не удалось получить цену при запуске", flush=True)
-    
+
     print("─" * 45, flush=True)
     print("🚀 Мониторинг запущен...\n", flush=True)
-    
+
     while True:
         price = get_gold_price()
         if price:
