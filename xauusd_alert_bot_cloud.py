@@ -3,6 +3,19 @@ import time
 from datetime import datetime
 
 # ══════════════════════════════════════
+# Справочник эмодзи — копируй нужный цвет
+# ══════════════════════════════════════
+# 🟢 зелёный
+# 🔴 красный
+# 🟡 жёлтый
+# 🔵 синий
+# 🟣 фиолетовый
+# 🟠 оранжевый
+# ⚪ белый
+# ⚫ чёрный
+# 🟤 коричневый
+
+# ══════════════════════════════════════
 # НАСТРОЙКИ
 # ══════════════════════════════════════
 TELEGRAM_TOKEN = "7456674909:AAHOzkE4saghYV1qdwSx-GoKFnA-psM74nE"
@@ -15,21 +28,21 @@ TOLERANCE = 1.50             # пунктов
 # УРОВНИ
 # ══════════════════════════════════════
 LEVELS = [
-    {"price": 4486.72, "name": "30M поддержка", "emoji": "🟣"},
-    {"price": 4455.32, "name": "1H поддержка", "emoji": "🟣"},
-    {"price": 4426.61, "name": "4H поддержка", "emoji": "🔵"},
-    {"price": 4411.84, "name": "30M поддержка", "emoji": "🟣"},
-    {"price": 4407.77, "name": "4H поддержка", "emoji": "🔵"},
-    {"price": 4388.03, "name": "4H поддержка", "emoji": "🔵"},
-    {"price": 4368.30, "name": "4H поддержка", "emoji": "🔵"},
+    {"price": 4486.72, "name": "30M зона", "emoji": "🟣"},
+    {"price": 4455.32, "name": "1H зона", "emoji": "🟣"},
+    {"price": 4426.61, "name": "4H зона", "emoji": "🔵"},
+    {"price": 4411.84, "name": "30M зона", "emoji": "🟣"},
+    {"price": 4407.77, "name": "4H зона", "emoji": "🔵"},
+    {"price": 4388.03, "name": "4H зона", "emoji": "🔵"},
+    {"price": 4368.30, "name": "4H зона", "emoji": "🔵"},
     {"price": 4353.40, "name": "МАКС Д / боковик M15", "emoji": "🟡"},
-    {"price": 4328.82, "name": "4H поддержка", "emoji": "🔵"},
+    {"price": 4328.82, "name": "4H зона", "emoji": "🔵"},
     {"price": 4304.60, "name": "ATR", "emoji": "🔵"},
-    {"price": 4288.45, "name": "4H поддержка", "emoji": "🔵"},
+    {"price": 4288.45, "name": "4H зона", "emoji": "🔵"},
     {"price": 4268.55, "name": "МИН Д / боковик M15", "emoji": "🟡"},
-    {"price": 4245.39, "name": "4H поддержка", "emoji": "🔵"},
-    {"price": 4215.78, "name": "1H поддержка", "emoji": "🟣"},
-    {"price": 4188.87, "name": "1H поддержка", "emoji": "🟣"},
+    {"price": 4245.39, "name": "4H зона", "emoji": "🔵"},
+    {"price": 4215.78, "name": "1H зона", "emoji": "🟣"},
+    {"price": 4188.87, "name": "1H зона", "emoji": "🟣"},
 ]
 
 last_alerted = {lvl["price"]: 0 for lvl in LEVELS}
@@ -110,7 +123,7 @@ def send_telegram(message):
 def send_test_message(price):
     price_str = f"{price:.2f}" if price else "недоступна"
     msg = (
-        "✅ <b>БОТ ЗАПУЩЕН!</b>\n\n"
+        "✅ <b>БОТ ЗАПУЩЕН на СЕРВЕРЕ!</b>\n\n"
         "☁️ Сервер: Railway (24/7)\n"
         "📡 Источник: Swissquote (Спот XAU/USD) — как в TradingView\n"
         f"💰 Текущая цена: <b>{price_str}</b>\n"
