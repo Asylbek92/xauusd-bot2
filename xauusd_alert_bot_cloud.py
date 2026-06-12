@@ -12,19 +12,6 @@ ALERT_COOLDOWN = 900
 TOLERANCE = 1.50
 
 # ══════════════════════════════════════
-# Справочник эмодзи — копируй нужный цвет
-# ══════════════════════════════════════
-# 🟢 зелёный
-# 🔴 красный
-# 🟡 жёлтый
-# 🔵 синий
-# 🟣 фиолетовый
-# 🟠 оранжевый
-# ⚪ белый
-# ⚫ чёрный
-# 🟤 коричневый
-
-# ══════════════════════════════════════
 # УРОВНИ
 # ══════════════════════════════════════
 LEVELS = [
@@ -50,7 +37,7 @@ last_alerted = {lvl["price"]: 0 for lvl in LEVELS}
 def get_gold_price():
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     
-    # 1. Yahoo Finance (фьючерс на золото GC=F) — РЕАЛЬНАЯ ЦЕНА XAU/USD
+    # 1. Yahoo Finance (GC=F — фьючерс COMEX) — РЕАЛЬНАЯ ЦЕНА ЗОЛОТА
     try:
         url = "https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1m&range=1d"
         r = requests.get(url, headers=headers, timeout=8)
@@ -61,38 +48,24 @@ def get_gold_price():
                 if "regularMarketPrice" in meta:
                     price = float(meta["regularMarketPrice"])
                     if price > 3000:
-                        print(f"  [yahoo finance] {price:.2f}", flush=True)
+                        print(f"  [yahoo GC=F] {price:.2f}", flush=True)
                         return price
     except Exception as e:
-        print(f"  [yahoo finance] Сбой: {e}", flush=True)
+        print(f"  [yahoo] Сбой: {e}", flush=True)
 
-    # 2. Metals.live (резервный источник спотовой цены)
+    # 2. Twelve Data (резервный, но с задержкой на бесплатном тарифе)
     try:
-        url = "https://api.metals.live/v1/spot"
-        r = requests.get(url, timeout=8)
+        url = "https://api.twelvedata.com/price?symbol=XAU/USD&apikey=a6b7b79510d24bb194dbf6f35efaa4d6"
+        r = requests.get(url, headers=headers, timeout=8)
         if r.status_code == 200:
             data = r.json()
-            if isinstance(data, list) and len(data) > 0 and "gold" in data[0]:
-                price = float(data[0]["gold"])
+            if "price" in data:
+                price = float(data["price"])
                 if price > 3000:
-                    print(f"  [metals.live] {price:.2f}", flush=True)
+                    print(f"  [twelvedata] {price:.2f} (может быть задержка!)", flush=True)
                     return price
     except Exception as e:
-        print(f"  [metals.live] Сбой: {e}", flush=True)
-
-    # 3. ExchangeRate.host (резервный источник)
-    try:
-        url = "https://api.exchangerate.host/latest?base=XAU&symbols=USD"
-        r = requests.get(url, timeout=8)
-        if r.status_code == 200:
-            data = r.json()
-            if "rates" in data and "USD" in data["rates"]:
-                price = float(data["rates"]["USD"])
-                if price > 3000:
-                    print(f"  [exchangerate.host] {price:.2f}", flush=True)
-                    return price
-    except Exception as e:
-        print(f"  [exchangerate.host] Сбой: {e}", flush=True)
+        print(f"  [twelvedata] Сбой: {e}", flush=True)
 
     print("  ❌ Все источники цены недоступны", flush=True)
     return None
@@ -114,9 +87,9 @@ def send_telegram(message):
 def send_test_message(price):
     price_str = f"{price:.2f}" if price else "недоступна"
     msg = (
-        "✅ <b>БОТ ЗАПУЩЕН НА СЕРВЕРЕ!</b>\n\n"
+        "✅ <b>БОТ ЗАПУЩЕН!</b>\n\n"
         "☁️ Сервер: Railway (24/7)\n"
-        "📡 Источник: Yahoo Finance (реальная цена XAU/USD)\n"
+        "📡 Источник: Yahoo Finance (фьючерс GC=F)\n"
         f"💰 Текущая цена: <b>{price_str}</b>\n"
         f"⏱ Проверка: каждую минуту\n"
         f"🔕 Повтор: раз в 15 мин\n"
