@@ -35,26 +35,27 @@ LEVELS = [
 last_alerted = {lvl["price"]: 0 for lvl in LEVELS}
 
 def get_gold_price():
+    """
+    Получает СПОТОВУЮ цену XAU/USD.
+    Основной источник: gold-api.com (бесплатно, без ключа).
+    Резервный: Twelve Data.
+    """
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     
-    # 1. Yahoo Finance (GC=F — фьючерс на золото COMEX). 
-    # Это ИМЕННО та цена, которую показывает TradingView.
+    # 1. Gold-API (спот XAU/USD)
     try:
-        url = "https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1m&range=1d"
-        r = requests.get(url, headers=headers, timeout=8)
+        r = requests.get("https://api.gold-api.com/price/XAU/USD", headers=headers, timeout=8)
         if r.status_code == 200:
             data = r.json()
-            if "chart" in data and "result" in data["chart"] and len(data["chart"]["result"]) > 0:
-                meta = data["chart"]["result"][0]["meta"]
-                if "regularMarketPrice" in meta:
-                    price = float(meta["regularMarketPrice"])
-                    if price > 2000:  # Проверка на адекватность цены золота
-                        print(f"  [yahoo GC=F] {price:.2f}", flush=True)
-                        return price
+            if "price" in data:
+                price = float(data["price"])
+                if price > 2000:      # проверка адекватности
+                    print(f"  [gold-api] {price:.2f}", flush=True)
+                    return price
     except Exception as e:
-        print(f"  [yahoo] Сбой: {e}", flush=True)
+        print(f"  [gold-api] Сбой: {e}", flush=True)
 
-    # 2. Twelve Data (только как аварийный резерв)
+    # 2. Twelve Data (ваш ключ)
     try:
         url = "https://api.twelvedata.com/price?symbol=XAU/USD&apikey=a6b7b79510d24bb194dbf6f35efaa4d6"
         r = requests.get(url, headers=headers, timeout=8)
@@ -90,7 +91,7 @@ def send_test_message(price):
     msg = (
         "✅ <b>БОТ ЗАПУЩЕН!</b>\n\n"
         "☁️ Сервер: Railway (24/7)\n"
-        "📡 Источник: Yahoo Finance (GC=F) — как в TradingView\n"
+        "📡 Источник: Gold-API + Twelve Data (спот XAU/USD)\n"
         f"💰 Текущая цена: <b>{price_str}</b>\n"
         f"⏱ Проверка: каждую минуту\n"
         f"🔕 Повтор: раз в 15 мин\n"
@@ -161,6 +162,5 @@ def main():
             print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Цена недоступна", flush=True)
         time.sleep(CHECK_INTERVAL)
 
-# ИСПРАВЛЕНО: было if name == "main":
 if __name__ == "__main__":
     main()
