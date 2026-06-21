@@ -28,27 +28,18 @@ TOLERANCE = 1.50             # пунктов
 # УРОВНИ
 # ══════════════════════════════════════
 LEVELS = [
-     {"price": 4550.98, "name": "4H зона", "emoji": "🟣"},
-     {"price": 4520.72, "name": "4H зона", "emoji": "🟣"},
-     {"price": 4498.55, "name": "4H зона", "emoji": "🟣"},
-     {"price": 4482.99, "name": "1H зона", "emoji": "🔵"},
-     {"price": 4463.29, "name": "4H зона", "emoji": "🟣"},
-     {"price": 4442.46, "name": "4H зона", "emoji": "🟣"},
-     {"price": 4420.93, "name": "4H зона", "emoji": "🟣"},
-     {"price": 4404.02, "name": "1H зона", "emoji": "🔵"},
-     {"price": 4388.41, "name": "4H зона", "emoji": "🟣"},
-     {"price": 4354.94, "name": "МАКС Д боковик M15 верх", "emoji": "🟡"},
-     {"price": 4330.47, "name": "ATR", "emoji": "🔵"},
-     {"price": 4305.99, "name": "МИН Д боковик M15 низ", "emoji": "🟡"},
-     {"price": 4286.30, "name": "4H зона", "emoji": "🟣"},
-     {"price": 4264.98, "name": "4H зона", "emoji": "🟣"}, 
-     {"price": 4236.83, "name": "4H боковик M15 верх", "emoji": "🟤"},
-     {"price": 4201.88, "name": "4H зона", "emoji": "🟣"}, 
-     {"price": 4170.78, "name": "4H боковик M15 низ", "emoji": "🟤"},
-     {"price": 4149.73, "name": "4H зона", "emoji": "🟣"},
-     {"price": 4115.41, "name": "4H зона", "emoji": "🟣"},
-     {"price": 4084.18, "name": "4H зона", "emoji": "🟣"},
-
+      {"price": 4354.94, "name": "Д и боковик M15 верх", "emoji": "🟡"},
+      {"price": 4305.99, "name": "Д зона", "emoji": "🟣"},
+      {"price": 4257.49, "name": "Д и боковик M15 низ", "emoji": "🟡"},
+      {"price": 4210.57, "name": "МАКС Д", "emoji": "🟤"},
+      {"price": 4166.23, "name": "ATR", "emoji": "🔵"},
+      {"price": 4121.89, "name": "МИН Д", "emoji": "🟤"},
+      {"price": 4085.09, "name": "4H зона", "emoji": "🟣"},
+      {"price": 4046.21, "name": "4H зона", "emoji": "🟣"},
+      {"price": 4005.61, "name": "4H зона", "emoji": "🟣"},
+      {"price": 3962.75, "name": "4H зона", "emoji": "🟣"},
+      {"price": 3927.20, "name": "4H зона", "emoji": "🟣"},
+      {"price": 3886.57, "name": "4H зона", "emoji": "🟣"},
     ]
 
 last_alerted = {lvl["price"]: 0 for lvl in LEVELS}
