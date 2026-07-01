@@ -28,19 +28,19 @@ TOLERANCE = 1.50             # пунктов
 # УРОВНИ
 # ══════════════════════════════════════
 LEVELS = [
-      {"price": 4354.94, "name": "Д и боковик M15 верх", "emoji": "🟡"},
-      {"price": 4305.99, "name": "Д зона", "emoji": "🟣"},
-      {"price": 4257.49, "name": "Д и боковик M15 низ", "emoji": "🟡"},
-      {"price": 4210.57, "name": "МАКС Д", "emoji": "🟤"},
-      {"price": 4166.23, "name": "ATR", "emoji": "🔵"},
-      {"price": 4121.89, "name": "МИН Д", "emoji": "🟤"},
-      {"price": 4085.09, "name": "4H зона", "emoji": "🟣"},
-      {"price": 4046.21, "name": "4H зона", "emoji": "🟣"},
-      {"price": 4005.61, "name": "4H зона", "emoji": "🟣"},
-      {"price": 3962.75, "name": "4H зона", "emoji": "🟣"},
-      {"price": 3927.20, "name": "4H зона", "emoji": "🟣"},
-      {"price": 3886.57, "name": "4H зона", "emoji": "🟣"},
-    ]
+      {"price": 4145.08, "name": "4H", "emoji": "🟤"},
+      {"price": 4112.77, "name": "4H", "emoji": "🟤"},
+      {"price": 4090.98, "name": "4H", "emoji": "🟤"},
+      {"price": 4063.42, "name": "МАКС Д", "emoji": "🟣"},
+      {"price": 4038.58, "name": "4H и боковик M15 ВВЕРХ", "emoji": "🟡"},
+      {"price": 4003.37, "name": "ATR", "emoji": "🔵"},
+      {"price": 3973.77, "name": "4H и боковик M15 НИЗ", "emoji": "🟡"},
+      {"price": 3943.31, "name": "МИН Д", "emoji": "🟣"},
+      {"price": 3915.47, "name": "4H", "emoji": "🟤"},
+      {"price": 3886.62, "name": "4H", "emoji": "🟤"},
+      {"price": 3855.70, "name": "4H", "emoji": "🟤"},
+      {"price": 3823.30, "name": "4H", "emoji": "🟤"},
+      ]
 
 last_alerted = {lvl["price"]: 0 for lvl in LEVELS}
 
