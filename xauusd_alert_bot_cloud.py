@@ -29,17 +29,7 @@ TOLERANCE = 1.50             # пунктов
 # ══════════════════════════════════════
 LEVELS = [
       {"price": 4145.08, "name": "4H", "emoji": "🟤"},
-      {"price": 4112.77, "name": "4H", "emoji": "🟤"},
-      {"price": 4090.98, "name": "4H", "emoji": "🟤"},
-      {"price": 4063.42, "name": "МАКС Д", "emoji": "🟣"},
-      {"price": 4038.58, "name": "4H и боковик M15 ВВЕРХ", "emoji": "🟡"},
-      {"price": 4003.37, "name": "ATR", "emoji": "🔵"},
-      {"price": 3973.77, "name": "4H и боковик M15 НИЗ", "emoji": "🟡"},
-      {"price": 3943.31, "name": "МИН Д", "emoji": "🟣"},
-      {"price": 3915.47, "name": "4H", "emoji": "🟤"},
-      {"price": 3886.62, "name": "4H", "emoji": "🟤"},
-      {"price": 3855.70, "name": "4H", "emoji": "🟤"},
-      {"price": 3823.30, "name": "4H", "emoji": "🟤"},
+
       ]
 
 last_alerted = {lvl["price"]: 0 for lvl in LEVELS}
