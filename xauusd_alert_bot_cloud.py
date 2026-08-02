@@ -18,8 +18,8 @@ from datetime import datetime
 # ══════════════════════════════════════
 # НАСТРОЙКИ
 # ══════════════════════════════════════
-TELEGRAM_TOKEN = "7456674909:AAHOzkE4saghYV1qdwSx-GoKFnA-psM74nE"
-TELEGRAM_CHAT_ID = "@Profit_XAUUSD_WinRate85"
+#TELEGRAM_TOKEN = "7456674909:AAHOzkE4saghYV1qdwSx-GoKFnA-psM74nE"
+#TELEGRAM_CHAT_ID = "@Profit_XAUUSD_WinRate85"
 CHECK_INTERVAL = 60          # секунд
 ALERT_COOLDOWN = 900         # секунд (15 мин)
 TOLERANCE = 1.50             # пунктов
